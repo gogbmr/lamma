@@ -1,0 +1,583 @@
+// This is your Prisma schema file.
+// Connection URLs should be managed in prisma.config.ts for Prisma v7+
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserRole {
+  user
+  admin
+}
+
+enum Permission {
+  MANAGE_USERS
+  MANAGE_COURSES
+  APPROVE_COURSES
+  MANAGE_FINANCES
+  VIEW_ANALYTICS
+  MANAGE_SETTINGS
+}
+
+enum CourseStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  STRIPE
+  PAYPAL
+  CUSTOM
+}
+
+enum WalletCurrency {
+  VIRTUAL_INR
+  LLAMACOIN
+}
+
+enum TransactionSource {
+  FIAT_DEPOSIT
+  COURSE_COMPLETION
+  QUIZ_REWARD
+  DAILY_STREAK
+  ADMIN_GRANT
+  PROMO_OFFER
+  TRADE_PROFIT
+  TRADE_LOSS
+}
+
+enum Segment {
+  Equity
+  FNO
+  Commodity
+}
+
+enum OrderType {
+  BUY
+  SELL
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
+}
+
+enum TransactionType {
+  TRADE
+  BONUS
+  PENALTY
+}
+
+enum NotificationType {
+  SYSTEM
+  TRADE
+  LEARNING
+  SECURITY
+}
+
+enum Period {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum NewsCategory {
+  MARKET
+  ECONOMY
+  COMPANY
+  CRYPTO
+  COMMODITY
+  FOREX
+  EDUCATION
+  GENERAL
+}
+
+enum NewsStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+
+
+
+// ==========================================
+// BETTER AUTH CORE MODELS (Strict Identity)
+// ==========================================
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Better Auth Plugins
+  username      String?  @unique
+  isAnonymous   Boolean? @default(false)
+
+  // Better Auth Relations
+  sessions Session[]
+  accounts Account[]
+
+  // The ONLY connection to the Finlamma App
+  profile UserProfile?
+
+  displayUsername String?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("accounts")
+  @@index([userId])
+}
+
+model Verification {
+  id         String    @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verifications")
+  @@index([identifier])
+}
+
+// ==========================================
+// FINLAMMA APP MODELS (Domain Data)
+// ==========================================
+
+model UserProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Granular Access Control
+  role            UserRole     @default(user)
+  permissions     Permission[]
+
+  // Deep User Tracking
+  totalTimeSpent  Int          @default(0)
+  lastActiveDate  DateTime?
+  currentCourseId String?
+  currentCourse   Course?      @relation("CurrentCourse", fields: [currentCourseId], references: [id])
+  currentLessonId String?
+  currentLesson   Lesson?      @relation("CurrentLesson", fields: [currentLessonId], references: [id])
+
+  // Split Wallets
+  virtualFiatBalance Float  @default(100000)
+  llamacoinBalance   Int    @default(0)
+
+  // Game Stats
+  xp                 Int    @default(0)
+  streak             Int    @default(0)
+  level              Int    @default(1)
+  avatar             String @default("default.png")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Workflow Relations
+  authoredCourses Course[]            @relation("CourseAuthor")
+  reviewedCourses Course[]            @relation("CourseReviewer")
+  courseReviews   CourseReview[]      @relation("ReviewerLog")
+  fiatPayments    FiatTransaction[]
+  userActivities  UserActivity[]
+  adminActions    AdminAuditLog[]
+
+  // Standard Relations
+  tutors Tutor[]
+  lessons         Lesson[]
+  progresses      UserProgress[]
+  trades          Trade[]
+  badges          UserBadge[]
+  leaderboards    Leaderboard[]
+  transactions    WalletTransaction[]
+  newsFeeds   NewsFeed[]  @relation("NewsFeedAuthor")
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  pushSubs        PushSubscription[]
+
+  @@map("user_profiles")
+}
+
+model Tutor {
+  id          String      @id @default(uuid())
+
+  name        String
+  bio         String?     @db.Text
+  avatar      String?
+
+  createdById String
+  createdBy   UserProfile @relation(fields: [createdById], references: [id])
+
+  courses     Course[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("tutors")
+}
+
+
+
+model Course {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  image       String?      // ← NEW: Course cover image URL (via UploadThing)
+  order       Int
+  xpReward    Int          @default(100)
+  icon        String?
+  status      CourseStatus @default(DRAFT)
+  isLocked    Boolean      @default(false)
+
+  authorId    String
+  author      UserProfile  @relation("CourseAuthor", fields: [authorId], references: [id])
+  reviewerId  String?
+  reviewer    UserProfile? @relation("CourseReviewer", fields: [reviewerId], references: [id])
+
+  tutorId     String?
+  tutor       Tutor?       @relation(fields: [tutorId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  lessons     Lesson[]
+  reviews     CourseReview[]
+  activeUsers UserProfile[] @relation("CurrentCourse")
+
+  @@map("courses")
+}
+
+model CourseReview {
+  id         String       @id @default(uuid())
+  courseId   String
+  course     Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  reviewerId String
+  reviewer   UserProfile  @relation("ReviewerLog", fields: [reviewerId], references: [id])
+  action     CourseStatus
+  notes      String?      @db.Text
+  createdAt  DateTime     @default(now())
+
+  @@map("course_reviews")
+}
+
+model Lesson {
+  id              String    @id @default(uuid())
+  topic           String?
+  module          String?
+  lessonNumber    Int?
+  title           String?
+
+  // Video & AI Fields
+  description     String?   @db.Text
+  icon            String?
+  videoUrl        String?   // Video file URL (via UploadThing)
+  videoContext     Json?     // JSON: [{ startTime: number, endTime?: number, topic: string, text: string }]
+
+  content         String?   @db.Text // Legacy reading material
+  order           Int?
+  isLocked        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  course          Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId         String?
+  profile         UserProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId       String?
+
+  quizzes         Quiz[]         // Legacy direct quizzes
+  progresses      UserProgress[]
+  activeUsers     UserProfile[]  @relation("CurrentLesson")
+
+  xpReward        Int       @default(10)
+  quizXpReward    Int       @default(20)
+  quizGroupId     String?
+  quizGroup       QuizGroup? @relation(fields: [quizGroupId], references: [id], onDelete: SetNull)
+  quizCountToShow Int       @default(5)
+
+  @@map("lessons")
+}
+
+model QuizGroup {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  quizzes     Quiz[]   @relation("QuizToGroup")
+  lessons     Lesson[]
+
+  @@map("quiz_groups")
+}
+
+model Quiz {
+  id            String      @id @default(uuid())
+  question      String
+  options       String[]
+  correctAnswer String
+  lesson        Lesson?     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId      String?
+  groups        QuizGroup[] @relation("QuizToGroup")
+
+  @@map("quizzes")
+}
+
+model UserProgress {
+  id          String    @id @default(uuid())
+  completed   Boolean   @default(false)
+  score       Int?
+  timeSpent   Int       @default(0)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId   String
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId    String
+
+  lessonCompleted Boolean @default(false)
+  quizCompleted   Boolean @default(false)
+
+  @@unique([profileId, lessonId])
+  @@map("user_progresses")
+}
+
+model WalletTransaction {
+  id        String      @id @default(uuid())
+  profileId String
+  profile   UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  currency     WalletCurrency
+  source       TransactionSource
+  amount       Float
+  balanceAfter Float
+  referenceId  String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("wallet_transactions")
+}
+
+model FiatTransaction {
+  id                String          @id @default(uuid())
+  profileId         String
+  profile           UserProfile     @relation(fields: [profileId], references: [id])
+  fiatAmount        Float
+  fiatCurrency      String          @default("INR")
+  purchasedCurrency WalletCurrency
+  virtualAmount     Float
+  provider          PaymentProvider
+  gatewayOrderId    String?         @unique
+  gatewayPaymentId  String?         @unique
+  status            PaymentStatus   @default(PENDING)
+  metadata          Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@map("fiat_transactions")
+}
+
+model AdminAuditLog {
+  id          String      @id @default(uuid())
+  adminId     String
+  admin       UserProfile @relation(fields: [adminId], references: [id])
+  action      String
+  targetModel String
+  targetId    String
+  changes     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  @@map("admin_audit_logs")
+}
+
+model UserActivity {
+  id           String      @id @default(uuid())
+  profileId    String
+  profile      UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  activityType String
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+
+  @@map("user_activities")
+}
+
+model Trade {
+  id         String      @id @default(uuid())
+  segment    Segment
+  symbol     String
+  orderType  OrderType
+  quantity   Int
+  entryPrice Float
+  exitPrice  Float?
+  status     TradeStatus @default(OPEN)
+  profitLoss Float       @default(0)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  profile    UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId  String
+
+  @@map("trades")
+}
+
+model Badge {
+  id          String      @id @default(uuid())
+  name        String
+  description String
+  icon        String
+  condition   String
+  users       UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String      @id @default(uuid())
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  profile   UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId String
+  badge     Badge       @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  badgeId   String
+
+  @@map("userbadges")
+}
+
+model Leaderboard {
+  id          String      @id @default(uuid())
+  segment     Segment
+  username    String
+  totalProfit Float
+  winRate     Float
+  period      Period
+  rank        Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId   String
+
+  @@map("leaderboards")
+}
+
+model NewsFeed {
+  id          String       @id @default(uuid())
+  title       String
+  summary     String       @db.Text
+  content     String       @db.Text
+  image       String?
+  source      String?
+  sourceUrl   String?
+  category    NewsCategory @default(GENERAL)
+  status      NewsStatus   @default(DRAFT)
+  tags        String[]
+  isPinned    Boolean      @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  authorId    String
+  author      UserProfile  @relation("NewsFeedAuthor", fields: [authorId], references: [id])
+
+  @@map("news_feeds")
+}
+
+
+
+model Notification {
+  id        String           @id @default(uuid())
+  title     String
+  message   String
+  type      NotificationType
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  profile   UserProfile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId String
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  action    String
+  ip        String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  profile   UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId String
+
+  @@map("auditlogs")
+}
+
+model PushSubscription {
+  id        String      @id @default(uuid())
+  endpoint  String
+  keys      Json
+  device    String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  profile   UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId String
+
+  @@map("pushsubscriptions")
+}
