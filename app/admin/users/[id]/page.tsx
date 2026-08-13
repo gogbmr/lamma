@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -60,13 +60,17 @@ interface UserData {
   };
 }
 
-// ─── Component ─────────────────────────────────────────────────
+// ─── Page Props (Next.js 15 pattern) ───────────────────────────
 
-export default function UserDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+// ─── Page Component ────────────────────────────────────────────
+
+export default function UserDetailPage({ params }: PageProps) {
+  const { id } = use(params); // ✅ Unwrap Promise with React.use()
+
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -74,9 +78,7 @@ export default function UserDetailPage({
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch(
-          `/api/admin/users/${params.id}`
-        );
+        const response = await fetch(`/api/admin/users/${id}`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch user");
@@ -94,7 +96,9 @@ export default function UserDetailPage({
     };
 
     fetchUser();
-  }, [params.id, router]);
+  }, [id, router]);
+
+  // ── Loading State ─────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -109,14 +113,12 @@ export default function UserDetailPage({
     );
   }
 
+  // ── Not Found State ───────────────────────────────────────────
+
   if (!user) {
     return (
       <main className="p-6">
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          className="mb-6"
-        >
+        <Button variant="ghost" onClick={() => router.back()} className="mb-6">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
@@ -124,11 +126,9 @@ export default function UserDetailPage({
         <Card>
           <CardContent className="h-96 flex items-center justify-center">
             <div className="text-center space-y-2">
-              <h3 className="font-semibold text-lg">
-                User not found
-              </h3>
+              <h3 className="font-semibold text-lg">User not found</h3>
               <p className="text-sm text-muted-foreground">
-                The user you're looking for doesn't exist
+                The user you&apos;re looking for doesn&apos;t exist
               </p>
             </div>
           </CardContent>
@@ -137,15 +137,14 @@ export default function UserDetailPage({
     );
   }
 
+  // ── Main Render ───────────────────────────────────────────────
+
   return (
     <main className="p-6 space-y-6">
+
       {/* ── Back Button ────────────────────────── */}
 
-      <Button
-        variant="ghost"
-        onClick={() => router.back()}
-        className="mb-2"
-      >
+      <Button variant="ghost" onClick={() => router.back()} className="mb-2">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Users
       </Button>
@@ -154,6 +153,8 @@ export default function UserDetailPage({
 
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-start gap-4">
+
+          {/* Avatar */}
           {user.user.image ? (
             <img
               src={user.user.image}
@@ -166,10 +167,9 @@ export default function UserDetailPage({
             </div>
           )}
 
+          {/* Name / Username / Badges */}
           <div>
-            <h1 className="text-3xl font-bold">
-              {user.user.name}
-            </h1>
+            <h1 className="text-3xl font-bold">{user.user.name}</h1>
             <p className="text-muted-foreground">
               {user.displayUsername && `@${user.displayUsername}`}
             </p>
@@ -190,6 +190,7 @@ export default function UserDetailPage({
                   "User"
                 )}
               </Badge>
+
               {user.user.emailVerified && (
                 <Badge
                   variant="outline"
@@ -202,8 +203,9 @@ export default function UserDetailPage({
           </div>
         </div>
 
+        {/* Edit Button */}
         <Link
-          href={`/admin/users/${params.id}/edit`}
+          href={`/admin/users/${id}/edit`}
           className={cn(buttonVariants({ variant: "default" }))}
         >
           <Edit className="h-4 w-4 mr-2" />
@@ -214,6 +216,7 @@ export default function UserDetailPage({
       {/* ── Stats Grid ─────────────────────────── */}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
         {/* Email */}
         <Card>
           <CardHeader className="space-y-1">
@@ -234,7 +237,7 @@ export default function UserDetailPage({
           </CardContent>
         </Card>
 
-        {/* Courses */}
+        {/* Courses Created */}
         <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -251,7 +254,7 @@ export default function UserDetailPage({
           </CardContent>
         </Card>
 
-        {/* Trades */}
+        {/* Total Trades */}
         <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -289,6 +292,7 @@ export default function UserDetailPage({
       {/* ── Account Details ────────────────────── */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
         {/* Account Info */}
         <Card>
           <CardHeader>
@@ -298,6 +302,7 @@ export default function UserDetailPage({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">
                 User ID
@@ -314,15 +319,12 @@ export default function UserDetailPage({
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">
-                  {new Date(user.user.createdAt).toLocaleDateString(
-                    "en-US",
-                    {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    }
-                  )}
+                  {new Date(user.user.createdAt).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </span>
               </div>
             </div>
@@ -332,21 +334,18 @@ export default function UserDetailPage({
                 Last Updated
               </p>
               <span className="text-sm">
-                {new Date(user.updatedAt).toLocaleDateString(
-                  "en-US",
-                  {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  }
-                )}
+                {new Date(user.updatedAt).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Permissions */}
+        {/* Permissions (Admin only) */}
         {user.role === "admin" && (
           <Card>
             <CardHeader>

@@ -1,18 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/navigation/navbar";
-import { 
-  Trophy, 
-  Flame, 
-  TrendingUp, 
-  Search, 
+import { authClient } from "@/lib/auth-client"; // Adjust path if needed
+import {
+  Trophy,
+  Flame,
+  TrendingUp,
+  Search,
   Crown,
   Medal,
-  Sparkles
+  Sparkles,
+  Zap,
+  Award,
+  Target,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 
-// Structure maps identically to standard JSON API payloads for cross-platform efficiency
+// ============================================================
+// TYPES
+// ============================================================
 interface LeaderboardUser {
   rank: number;
   id: string;
@@ -25,218 +33,378 @@ interface LeaderboardUser {
   isCurrentUser?: boolean;
 }
 
-const mockLeaderboardData: LeaderboardUser[] = [
-  { rank: 1, id: "u1", username: "rahul_trader", name: "Rahul Sharma", xp: 24500, tradingProfit: 84200, level: 14, avatar: "🔥" },
-  { rank: 2, id: "u2", username: "priya_invest", name: "Priya Patel", xp: 21200, tradingProfit: 71500, level: 12, avatar: "⚡" },
-  { rank: 3, id: "u3", username: "aman_stocks", name: "Aman Verma", xp: 19800, tradingProfit: 64000, level: 11, avatar: "💎" },
-  { rank: 4, id: "u4", username: "neha_nifty", name: "Neha Joshi", xp: 17400, tradingProfit: 52100, level: 9, avatar: "🚀" },
-  { rank: 5, id: "u5", username: "bull_market", name: "Vikram Singh", xp: 15100, tradingProfit: -4200, level: 8, avatar: "📈", isCurrentUser: true }, // Highlighted User
-  { rank: 6, id: "u6", username: "option_king", name: "Rajesh Kumar", xp: 14200, tradingProfit: 48900, level: 8, avatar: "👑" },
-  { rank: 7, id: "u7", username: "alpha_mind", name: "Arjun Mehta", xp: 12900, tradingProfit: 31200, level: 7, avatar: "🧠" },
-  { rank: 8, id: "u8", username: "sensex_guru", name: "Sanjay Dutt", xp: 11200, tradingProfit: 19500, level: 6, avatar: "🧘" },
-];
+// ============================================================
+// PODIUM COMPONENT
+// ============================================================
+function PodiumSpot({
+  user,
+  rank,
+  filterType,
+  position,
+}: {
+  user: LeaderboardUser;
+  rank: number;
+  filterType: "xp" | "profit";
+  position: "first" | "second" | "third";
+}) {
+  const heights = {
+    first: "h-[200px] md:h-[240px]",
+    second: "h-[160px] md:h-[200px]",
+    third: "h-[140px] md:h-[180px]",
+  };
 
-export default function LeaderboardPage() {
-  // Toggle filters mimic typical backend query parameters (?type=xp or ?type=profit)
-  const [filterType, setFilterType] = useState<"xp" | "profit">("xp");
-  const [searchQuery, setSearchQuery] = useState("");
+  const borders = {
+    first: "border-2 border-yellow-400 shadow-xl shadow-yellow-400/20",
+    second: "border-2 border-gray-400 shadow-lg shadow-gray-400/10",
+    third: "border-2 border-orange-600 shadow-lg shadow-orange-600/10",
+  };
 
-  // Sort and filter computation mirror database querying rules
-  const sortedData = [...mockLeaderboardData]
-    .sort((a, b) => filterType === "profit" ? b.tradingProfit - a.tradingProfit : b.xp - a.xp)
-    .map((item, index) => ({ ...item, rank: index + 1 }))
-    .filter(user => 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      user.username.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  const badges = {
+    first: (
+      <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+        <div className="w-16 h-16 rounded-full bg-yellow-400 flex items-center justify-center shadow-lg animate-bounce">
+          <Crown className="h-8 w-8 text-yellow-900" />
+        </div>
+        <div className="bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-[10px] font-black shadow-md">
+          CHAMPION
+        </div>
+      </div>
+    ),
+    second: (
+      <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+        <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center shadow-lg">
+          <Medal className="h-6 w-6 text-gray-700" />
+        </div>
+        <div className="bg-gray-400 text-gray-700 px-2 py-0.5 rounded-full text-[9px] font-black shadow-md">
+          2ND PLACE
+        </div>
+      </div>
+    ),
+    third: (
+      <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+        <div className="w-12 h-12 rounded-full bg-orange-600 flex items-center justify-center shadow-lg">
+          <Award className="h-6 w-6 text-orange-100" />
+        </div>
+        <div className="bg-orange-600 text-orange-100 px-2 py-0.5 rounded-full text-[9px] font-black shadow-md">
+          3RD PLACE
+        </div>
+      </div>
+    ),
+  };
 
-  // Extract Podium top 3 spots cleanly
-  const podiumSpots = sortedData.slice(0, 3);
-  const remainingRows = sortedData.slice(3);
-
-  // Find user context info block
-  const currentUserStats = mockLeaderboardData.find(u => u.isCurrentUser);
+  const glows = {
+    first: "bg-gradient-to-b from-yellow-400/10 to-transparent",
+    second: "bg-gradient-to-b from-gray-400/10 to-transparent",
+    third: "bg-gradient-to-b from-orange-600/10 to-transparent",
+  };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col pb-20 md:pb-0 transition-colors duration-300">
+    <div className={`relative ${heights[position]}`}>
+      {badges[position]}
+      <div
+        className={`h-full bg-card rounded-2xl ${borders[position]} ${glows[position]} flex flex-col items-center justify-center p-4 relative overflow-hidden transition-transform hover:scale-105 duration-300`}
+      >
+        {position === "first" && (
+          <>
+            <Sparkles className="absolute top-2 left-2 h-4 w-4 text-yellow-400 fill-yellow-400 animate-pulse" />
+            <Sparkles className="absolute bottom-2 right-2 h-4 w-4 text-yellow-400 fill-yellow-400 animate-pulse [animation-delay:500ms]" />
+          </>
+        )}
+
+        <div className="text-4xl md:text-5xl mb-3">{user.avatar}</div>
+        <h3 className="font-black text-sm md:text-base text-center truncate w-full px-2">
+          {user.name}
+        </h3>
+        <p className="text-[10px] text-muted-foreground font-bold mb-2">
+          @{user.username}
+        </p>
+
+        <div className="bg-background/60 backdrop-blur-sm border border-border rounded-xl px-3 py-2 w-full">
+          <div className="text-center">
+            <div className={`text-lg md:text-xl font-black ${
+              filterType === "profit"
+                ? user.tradingProfit >= 0
+                  ? "text-success"
+                  : "text-destructive"
+                : "text-primary"
+            }`}>
+              {filterType === "profit"
+                ? `${user.tradingProfit >= 0 ? "+" : ""}₹${user.tradingProfit.toLocaleString("en-IN")}`
+                : `${user.xp.toLocaleString()} XP`}
+            </div>
+            <div className="text-[10px] text-muted-foreground font-bold mt-0.5">
+              Level {user.level}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MAIN PAGE
+// ============================================================
+export default function LeaderboardPage() {
+  const [filterType, setFilterType] = useState<"xp" | "profit">("xp");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [rawUsers, setRawUsers] = useState<LeaderboardUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Get Current Logged-in User from Better Auth
+  const { data: session } = authClient.useSession();
+
+  // Fetch Database Rankings
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        setIsLoading(true);
+        const res = await fetch("/api/leaderboard");
+        if (!res.ok) throw new Error("Failed to fetch");
+        
+        const data = await res.json();
+        setRawUsers(data);
+      } catch (error) {
+        console.error("Error fetching leaderboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLeaderboard();
+  }, []);
+
+  // Process, Sort, and Filter Data Dynamically
+  const sortedData = [...rawUsers]
+    .sort((a, b) =>
+      filterType === "profit"
+        ? b.tradingProfit - a.tradingProfit
+        : b.xp - a.xp
+    )
+    .map((item, index) => ({ 
+      ...item, 
+      rank: index + 1,
+      // Flag if this row belongs to the active logged-in session user
+      isCurrentUser: session?.user?.id === item.id 
+    }))
+    .filter(
+      (user) =>
+        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.username.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+  const podiumSpots = sortedData.slice(0, 3);
+  const remainingRows = sortedData.slice(3);
+  const currentUserStats = sortedData.find((u) => u.isCurrentUser);
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col pb-20 md:pb-0">
       <Navbar />
 
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 space-y-8">
         
-        {/* ==========================================
-            1. HEADER METRICS CONTROL STRIP
-           ========================================== */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-              <Trophy className="h-6 w-6 text-warning" />
+        {/* HEADER SECTION */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 px-4 py-2 rounded-full">
+            <Trophy className="h-5 w-5 text-primary fill-primary/60" />
+            <span className="text-sm font-black text-primary uppercase tracking-wider">
               Global Arena
-            </h1>
-            <p className="text-xs text-muted-foreground font-medium">Compete daily with elite retail learners across India.</p>
+            </span>
           </div>
 
-          {/* Toggle Controllers */}
-          <div className="flex items-center gap-2 bg-card border border-border p-1 rounded-xl self-start md:self-auto shadow-sm">
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight">
+            Top Performers 🏆
+          </h1>
+          <p className="text-sm text-muted-foreground font-medium max-w-md mx-auto">
+            Compete with thousands of learners across India. Climb the ranks by earning XP and mastering trading!
+          </p>
+        </div>
+
+        {/* CONTROLS */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 justify-between">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search learners..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 text-sm bg-card border-2 border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary transition-all font-medium"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 bg-card border-2 border-border p-1 rounded-xl shadow-sm">
             <button
               onClick={() => setFilterType("xp")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold tracking-tight transition-all cursor-pointer ${
-                filterType === "xp" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              className={`px-4 py-2 rounded-lg text-xs font-black tracking-tight transition-all duration-200 flex items-center gap-1.5 ${
+                filterType === "xp"
+                  ? "bg-primary text-primary-foreground shadow-[0_3px_0_0_hsl(var(--primary)/0.5)]"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              XP Standings
+              <Zap className="h-3.5 w-3.5" />
+              XP Rank
             </button>
             <button
               onClick={() => setFilterType("profit")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold tracking-tight transition-all cursor-pointer ${
-                filterType === "profit" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              className={`px-4 py-2 rounded-lg text-xs font-black tracking-tight transition-all duration-200 flex items-center gap-1.5 ${
+                filterType === "profit"
+                  ? "bg-primary text-primary-foreground shadow-[0_3px_0_0_hsl(var(--primary)/0.5)]"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Paper Returns
+              <TrendingUp className="h-3.5 w-3.5" />
+              Profit Rank
             </button>
           </div>
         </div>
 
-        {/* Search Engine Layer Input */}
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search username or name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm bg-card border border-border rounded-xl focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-          />
-        </div>
-
-        {/* ==========================================
-            2. THE PODIUM CONTAINER STAGE (Top 3)
-           ========================================== */}
-        {searchQuery === "" && podiumSpots.length >= 3 && (
-          <div className="grid grid-cols-3 gap-2 md:gap-4 items-end pt-6 max-w-2xl mx-auto text-center">
-            
-            {/* Rank #2: Silver Medalist */}
-            <div className="bg-card border border-border rounded-2xl p-3 md:p-5 flex flex-col items-center justify-center space-y-2 order-1 h-[160px] md:h-[190px] shadow-sm relative">
-              <div className="absolute top-[-16px] bg-muted border border-border h-7 w-7 rounded-full flex items-center justify-center text-xs font-black text-muted-foreground shadow-sm">2</div>
-              <span className="text-2xl">{podiumSpots[1]?.avatar}</span>
-              <div className="truncate w-full font-bold text-xs md:text-sm tracking-tight">{podiumSpots[1]?.name}</div>
-              <div className="text-[10px] md:text-xs font-extrabold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                {filterType === "profit" ? `₹${podiumSpots[1]?.tradingProfit.toLocaleString("en-IN")}` : `${podiumSpots[1]?.xp.toLocaleString()} XP`}
-              </div>
-            </div>
-
-            {/* Rank #1: Gold Crown Champion */}
-            <div className="bg-card border-2 border-warning rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center space-y-2 order-2 h-[190px] md:h-[230px] shadow-md relative scale-105">
-              <div className="absolute top-[-24px] animate-bounce">
-                <Crown className="h-7 w-7 text-warning fill-warning" />
-              </div>
-              <div className="absolute top-[-16px] bg-warning text-warning-foreground h-8 w-8 rounded-full flex items-center justify-center text-sm font-black shadow-md">1</div>
-              <span className="text-3xl">{podiumSpots[0]?.avatar}</span>
-              <div className="truncate w-full font-black text-sm tracking-tight">{podiumSpots[0]?.name}</div>
-              <div className="text-xs font-black text-warning bg-warning/10 px-3 py-1 rounded-full border border-warning/20">
-                {filterType === "profit" ? `₹${podiumSpots[0]?.tradingProfit.toLocaleString("en-IN")}` : `${podiumSpots[0]?.xp.toLocaleString()} XP`}
-              </div>
-            </div>
-
-            {/* Rank #3: Bronze Medalist */}
-            <div className="bg-card border border-border rounded-2xl p-3 md:p-5 flex flex-col items-center justify-center space-y-2 order-3 h-[140px] md:h-[170px] shadow-sm relative">
-              <div className="absolute top-[-16px] bg-amber-700/10 border border-amber-700/20 h-7 w-7 rounded-full flex items-center justify-center text-xs font-black text-amber-700 shadow-sm">3</div>
-              <span className="text-2xl">{podiumSpots[2]?.avatar}</span>
-              <div className="truncate w-full font-bold text-xs md:text-sm tracking-tight">{podiumSpots[2]?.name}</div>
-              <div className="text-[10px] md:text-xs font-extrabold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                {filterType === "profit" ? `₹${podiumSpots[2]?.tradingProfit.toLocaleString("en-IN")}` : `${podiumSpots[2]?.xp.toLocaleString()} XP`}
-              </div>
-            </div>
-
+        {/* LOADING STATE */}
+        {isLoading ? (
+          <div className="py-24 flex flex-col items-center justify-center gap-4 text-primary">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-sm font-bold animate-pulse text-muted-foreground">Calculating global ranks...</p>
           </div>
-        )}
-
-        {/* ==========================================
-            3. LOWER RUNNER SCROLL SHEET (Ranks 4+)
-           ========================================== */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-          <div className="divide-y divide-border/60">
-            
-            {/* Map standard ranking spreadsheet entries */}
-            {(searchQuery !== "" ? sortedData : remainingRows).map((user) => (
-              <div 
-                key={user.id} 
-                className={`flex items-center justify-between p-4 transition-colors duration-150 ${
-                  user.isCurrentUser ? "bg-primary/5 dark:bg-primary/10" : "hover:bg-muted/30"
-                }`}
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  {/* Position Stamp */}
-                  <span className="text-xs font-black text-muted-foreground w-6 text-center">
-                    #{user.rank}
-                  </span>
-                  
-                  {/* Emoji Avatar Graphic */}
-                  <div className="h-9 w-9 rounded-xl bg-background border border-border flex items-center justify-center text-base shadow-sm shrink-0">
-                    {user.avatar}
+        ) : (
+          <>
+            {/* PODIUM (Top 3) */}
+            {searchQuery === "" && podiumSpots.length >= 3 && (
+              <div className="relative pt-16 pb-8">
+                <div className="grid grid-cols-3 gap-3 md:gap-6 items-end max-w-3xl mx-auto">
+                  <div className="order-1">
+                    <PodiumSpot user={podiumSpots[1]} rank={2} filterType={filterType} position="second" />
                   </div>
-
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold tracking-tight truncate">{user.name}</span>
-                      {user.isCurrentUser && (
-                        <span className="text-[9px] uppercase font-black bg-primary text-primary-foreground px-1.5 py-0.5 rounded tracking-wider shadow-sm">You</span>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground font-medium block truncate">@{user.username || "explorer"}</span>
+                  <div className="order-2">
+                    <PodiumSpot user={podiumSpots[0]} rank={1} filterType={filterType} position="first" />
+                  </div>
+                  <div className="order-3">
+                    <PodiumSpot user={podiumSpots[2]} rank={3} filterType={filterType} position="third" />
                   </div>
                 </div>
-
-                {/* Performance Matrix Payload Indicator */}
-                <div className="text-right shrink-0 pl-2">
-                  <div className={`text-sm font-extrabold tracking-tight ${
-                    filterType === "profit" 
-                      ? user.tradingProfit >= 0 ? "text-success" : "text-destructive"
-                      : "text-foreground"
-                  }`}>
-                    {filterType === "profit" 
-                      ? `${user.tradingProfit >= 0 ? "+" : ""}₹${user.tradingProfit.toLocaleString("en-IN")}`
-                      : `${user.xp.toLocaleString()} XP`
-                    }
-                  </div>
-                  <span className="text-[10px] font-bold text-muted-foreground block">Lvl {user.level}</span>
-                </div>
-              </div>
-            ))}
-
-            {sortedData.length === 0 && (
-              <div className="p-8 text-center text-sm text-muted-foreground font-medium">
-                No market players found matching that search string.
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-2 bg-gradient-to-r from-transparent via-border to-transparent rounded-full" />
               </div>
             )}
-          </div>
-        </div>
 
-        {/* ==========================================
-            4. FIXED USER CONTEXT SHIELD FOOTHOLD
-           ========================================== */}
-        {currentUserStats && searchQuery === "" && (
-          <div className="bg-primary text-primary-foreground p-4 rounded-xl flex items-center justify-between shadow-md border border-primary/20">
-            <div className="flex items-center gap-3">
-              <div className="h-7 w-7 rounded-full bg-primary-foreground text-primary flex items-center justify-center font-black text-xs shadow-sm">
-                #{currentUserStats.rank}
+            {/* RANKINGS LIST */}
+            <div className="bg-card border-2 border-border rounded-2xl overflow-hidden shadow-lg">
+              <div className="bg-muted/50 border-b-2 border-border px-4 py-3 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  {searchQuery ? "Search Results" : "All Rankings"}
+                </h3>
+                <span className="text-xs font-bold text-muted-foreground">
+                  {sortedData.length} learners
+                </span>
               </div>
-              <div>
-                <h4 className="text-xs font-black tracking-tight leading-none flex items-center gap-1">
-                  Your Current Standing
-                  <Sparkles className="h-3 w-3 fill-current text-warning animate-pulse" />
-                </h4>
-                <p className="text-[11px] text-primary-foreground/80 mt-0.5 font-medium">Keep completing lessons to unlock the podium!</p>
+
+              <div className="divide-y divide-border">
+                {(searchQuery !== "" ? sortedData : remainingRows).map((user) => (
+                  <div
+                    key={user.id}
+                    className={`flex items-center justify-between p-4 transition-all duration-200 ${
+                      user.isCurrentUser
+                        ? "bg-primary/10 border-l-4 border-primary"
+                        : "hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                      <div
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                          user.rank <= 3
+                            ? "bg-primary/20 text-primary border-2 border-primary/30"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        #{user.rank}
+                      </div>
+
+                      <div className="h-11 w-11 rounded-xl bg-background border-2 border-border flex items-center justify-center text-xl shadow-sm shrink-0">
+                        {user.avatar}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold tracking-tight truncate">
+                            {user.name}
+                          </span>
+                          {user.isCurrentUser && (
+                            <span className="text-[9px] uppercase font-black bg-primary text-primary-foreground px-1.5 py-0.5 rounded tracking-wider shadow-sm">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground font-medium block truncate">
+                          @{user.username}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0 pl-3">
+                      <div
+                        className={`text-base font-black tracking-tight ${
+                          filterType === "profit"
+                            ? user.tradingProfit >= 0
+                              ? "text-success"
+                              : "text-destructive"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {filterType === "profit"
+                          ? `${user.tradingProfit >= 0 ? "+" : ""}₹${user.tradingProfit.toLocaleString("en-IN")}`
+                          : `${user.xp.toLocaleString()} XP`}
+                      </div>
+                      <span className="text-[10px] font-bold text-muted-foreground flex items-center justify-end gap-1 mt-0.5">
+                        <Crown className="h-3 w-3" />
+                        Lvl {user.level}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {sortedData.length === 0 && (
+                  <div className="p-12 text-center">
+                    <Search className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground font-bold">
+                      No learners found matching "{searchQuery}"
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="text-right font-black text-xs tracking-tight bg-primary-foreground/10 px-3 py-1.5 rounded-lg border border-primary-foreground/10">
-              {filterType === "profit" 
-                ? `₹${currentUserStats.tradingProfit.toLocaleString("en-IN")}`
-                : `${currentUserStats.xp.toLocaleString()} XP`
-              }
-            </div>
-          </div>
+
+            {/* YOUR RANK CARD (Fixed at bottom on mobile) */}
+            {currentUserStats && searchQuery === "" && (
+              <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-5 rounded-2xl flex items-center justify-between shadow-xl border-2 border-primary/30 mt-8">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-full bg-primary-foreground text-primary flex items-center justify-center font-black text-lg shadow-lg">
+                    #{currentUserStats.rank}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black tracking-tight leading-none flex items-center gap-1.5">
+                      Your Current Rank
+                      <Sparkles className="h-4 w-4 fill-current animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-primary-foreground/80 mt-1 font-medium">
+                      {currentUserStats.rank <= 10
+                        ? "You're in the top 10! 🔥"
+                        : "Keep learning to climb higher!"}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right font-black bg-primary-foreground/20 px-4 py-2 rounded-xl border border-primary-foreground/20 backdrop-blur-sm">
+                  <div className="text-lg">
+                    {filterType === "profit"
+                      ? `${currentUserStats.tradingProfit >= 0 ? "+" : ""}₹${currentUserStats.tradingProfit.toLocaleString("en-IN")}`
+                      : `${currentUserStats.xp.toLocaleString()} XP`}
+                  </div>
+                  <div className="text-[10px] text-primary-foreground/70 mt-0.5">
+                    Level {currentUserStats.level}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
-
       </main>
     </div>
   );

@@ -581,3 +581,17 @@ model PushSubscription {
 
   @@map("pushsubscriptions")
 }
+
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  url       String   // The Supabase public URL
+  fileName  String   // Original file name (e.g., "bitcoin-logo.png")
+  fileType  String   // e.g., "image/jpeg" or "video/mp4"
+  size      Int      // File size in bytes
+  createdAt DateTime @default(now())
+  
+  // Optional: Track who uploaded it
+  // uploadedById String
+  // uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+}

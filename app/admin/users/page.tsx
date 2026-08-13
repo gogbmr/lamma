@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Users,
   Shield,
+  Eye,
   User as UserIcon,
 } from "lucide-react";
 
@@ -400,6 +401,19 @@ export default function AdminUsersPage() {
                       {/* Actions */}
                       <TableCell>
                         <div className="flex justify-end gap-2">
+                        {/* View */}
+                          <Link
+                            href={`/admin/users/${user.id}`}
+                            className={cn(
+                              buttonVariants({  
+                              variant: "outline",
+                              size: "icon",
+                            }))
+                            }
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Link>
+
                           {/* Edit */}
                           <Link
                             href={`/admin/users/${user.id}/edit`}

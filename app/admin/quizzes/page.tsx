@@ -44,7 +44,7 @@ export default function QuizManagerPage() {
   const reloadDataPipeline = async () => {
     try {
       setIsLoading(true);
-      const resGroups = await fetch("/api/admin/quiz-group");
+      const resGroups = await fetch("/api/admin/quiz-groups");
       if (resGroups.ok) setGroups(await resGroups.json());
     } catch (err) {
       toast.error("Failed to synchronize cluster telemetry data.");

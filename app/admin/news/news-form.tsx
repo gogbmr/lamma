@@ -15,8 +15,6 @@ import {
 
 import { toast } from "sonner";
 
-import { UploadButton } from "@/lib/uploadthing";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +34,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+// Import your new centralized Media Picker Modal!
+import MediaPickerModal from "@/components/admin/MediaPickerModal";
 
 type NewsStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
@@ -75,6 +76,7 @@ export default function NewsForm({
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false); // Modal control state
 
   const [title, setTitle] = useState(
     initialData?.title || ""
@@ -203,11 +205,9 @@ export default function NewsForm({
 
       const res = await fetch(url, {
         method,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify(payload),
       });
 
@@ -227,7 +227,6 @@ export default function NewsForm({
       );
 
       router.push("/admin/news");
-
       router.refresh();
     } catch (error: any) {
       toast.error(
@@ -250,7 +249,6 @@ export default function NewsForm({
           {/* Title */}
           <div className="space-y-2">
             <Label>Article Title *</Label>
-
             <Input
               value={title}
               onChange={(e) =>
@@ -263,7 +261,6 @@ export default function NewsForm({
           {/* Summary */}
           <div className="space-y-2">
             <Label>Summary *</Label>
-
             <Textarea
               rows={3}
               value={summary}
@@ -277,7 +274,6 @@ export default function NewsForm({
           {/* Content */}
           <div className="space-y-2">
             <Label>Full Content *</Label>
-
             <Textarea
               rows={8}
               value={content}
@@ -311,17 +307,17 @@ export default function NewsForm({
                 </Button>
               </div>
             ) : (
-              <UploadButton
-                endpoint="newsImage"
-                onClientUploadComplete={(res) => {
-                  if (res?.[0]) {
-                    setImage(res[0].ufsUrl);
-                    toast.success(
-                      "Image uploaded"
-                    );
-                  }
-                }}
-              />
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-32 border-dashed border-2 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 transition"
+                  onClick={() => setIsMediaModalOpen(true)}
+                >
+                  <ImageIcon className="h-8 w-8 mb-2 opacity-50" />
+                  <span>Browse Media Library or Upload</span>
+                </Button>
+              </div>
             )}
           </div>
 
@@ -334,7 +330,6 @@ export default function NewsForm({
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Source Name</Label>
-
                   <Input
                     value={source}
                     onChange={(e) =>
@@ -346,7 +341,6 @@ export default function NewsForm({
 
                 <div className="space-y-2">
                   <Label>Source URL</Label>
-
                   <Input
                     value={sourceUrl}
                     onChange={(e) =>
@@ -373,37 +367,14 @@ export default function NewsForm({
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem value="MARKET">
-                    Market
-                  </SelectItem>
-
-                  <SelectItem value="ECONOMY">
-                    Economy
-                  </SelectItem>
-
-                  <SelectItem value="COMPANY">
-                    Company
-                  </SelectItem>
-
-                  <SelectItem value="CRYPTO">
-                    Crypto
-                  </SelectItem>
-
-                  <SelectItem value="COMMODITY">
-                    Commodity
-                  </SelectItem>
-
-                  <SelectItem value="FOREX">
-                    Forex
-                  </SelectItem>
-
-                  <SelectItem value="EDUCATION">
-                    Education
-                  </SelectItem>
-
-                  <SelectItem value="GENERAL">
-                    General
-                  </SelectItem>
+                  <SelectItem value="MARKET">Market</SelectItem>
+                  <SelectItem value="ECONOMY">Economy</SelectItem>
+                  <SelectItem value="COMPANY">Company</SelectItem>
+                  <SelectItem value="CRYPTO">Crypto</SelectItem>
+                  <SelectItem value="COMMODITY">Commodity</SelectItem>
+                  <SelectItem value="FOREX">Forex</SelectItem>
+                  <SelectItem value="EDUCATION">Education</SelectItem>
+                  <SelectItem value="GENERAL">General</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -423,17 +394,9 @@ export default function NewsForm({
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem value="DRAFT">
-                    Draft
-                  </SelectItem>
-
-                  <SelectItem value="PUBLISHED">
-                    Published
-                  </SelectItem>
-
-                  <SelectItem value="ARCHIVED">
-                    Archived
-                  </SelectItem>
+                  <SelectItem value="DRAFT">Draft</SelectItem>
+                  <SelectItem value="PUBLISHED">Published</SelectItem>
+                  <SelectItem value="ARCHIVED">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -462,9 +425,7 @@ export default function NewsForm({
                     setTagInput(e.target.value)
                   }
                   onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter"
-                    ) {
+                    if (e.key === "Enter") {
                       e.preventDefault();
                       addTag();
                     }
@@ -513,9 +474,7 @@ export default function NewsForm({
                 </div>
 
                 <p className="text-sm text-muted-foreground">
-                  Keep this article
-                  pinned at the top of
-                  the news feed.
+                  Keep this article pinned at the top of the news feed.
                 </p>
               </div>
 
@@ -553,7 +512,6 @@ export default function NewsForm({
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-
                   {mode === "create"
                     ? "Create Article"
                     : "Update Article"}
@@ -563,6 +521,20 @@ export default function NewsForm({
           </div>
         </CardContent>
       </Card>
+      
+      {/* 
+        The Media Picker Modal is mounted here! 
+        It only renders when isMediaModalOpen is true.
+      */}
+      {isMediaModalOpen && (
+        <MediaPickerModal
+          onClose={() => setIsMediaModalOpen(false)}
+          onSelect={(url) => {
+            setImage(url); // Save the selected URL to the form state
+            setIsMediaModalOpen(false); // Close the popup
+          }}
+        />
+      )}
     </form>
   );
 }
