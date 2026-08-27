@@ -35,11 +35,11 @@ export async function GET(
       );
     }
 
-    const { id } = await params;
+    const { courseId } = await params;
 
     const course = await prisma.course.findUnique({
       where: {
-        id,
+        id: courseId,
       },
       include: {
         // 🔥 FIXED: We now tell Prisma exactly which lesson fields to fetch!
@@ -119,7 +119,7 @@ export async function PUT(
       );
     }
 
-    const { id } = await params;
+    const { courseId } = await params;
     const body = await req.json();
 
     const {
@@ -135,7 +135,7 @@ export async function PUT(
     } = body;
 
     const existingCourse = await prisma.course.findUnique({
-      where: { id },
+      where: { id: courseId },
     });
 
     if (!existingCourse) {
@@ -148,7 +148,7 @@ export async function PUT(
     const duplicateOrder = await prisma.course.findFirst({
       where: {
         order: Number(order),
-        NOT: { id },
+        NOT: { id: courseId },
       },
     });
 
@@ -161,11 +161,11 @@ export async function PUT(
 
     await prisma.$transaction(async (tx) => {
       await tx.lesson.deleteMany({
-        where: { courseId: id },
+        where: { courseId: courseId },
       });
 
       await tx.course.update({
-        where: { id },
+        where: { id: courseId },
         data: {
           title: title.trim(),
           description: description.trim(),
@@ -199,7 +199,7 @@ export async function PUT(
     });
 
     const updatedCourse = await prisma.course.findUnique({
-      where: { id },
+      where: { id: courseId },
       include: {
         lessons: {
           orderBy: { order: "asc" },
@@ -246,10 +246,10 @@ export async function DELETE(
       );
     }
 
-    const { id } = await params;
+    const { courseId } = await params;
 
     const course = await prisma.course.findUnique({
-      where: { id },
+      where: { id: courseId },
       include: {
         _count: {
           select: { lessons: true },
@@ -265,7 +265,7 @@ export async function DELETE(
     }
 
     await prisma.course.delete({
-      where: { id },
+      where: { id: courseId },
     });
 
     return NextResponse.json({
@@ -273,7 +273,7 @@ export async function DELETE(
       message: "Course removed successfully",
     });
   } catch (error) {
-    console.error("❌ DELETE /api/admin/courses/[id] failed:", error);
+    console.error("❌ DELETE /api/admin/courses/[courseId] failed:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }
