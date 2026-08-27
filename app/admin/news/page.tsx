@@ -188,9 +188,7 @@ export default function AdminNewsPage() {
   const [category, setCategory] = useState("ALL");
 
   const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
-    "desc"
-  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -219,9 +217,7 @@ export default function AdminNewsPage() {
         sortOrder,
       });
 
-      const res = await fetch(
-        `/api/admin/news?${params.toString()}`
-      );
+      const res = await fetch(`/api/admin/news?${params.toString()}`);
 
       if (!res.ok) throw new Error();
 
@@ -262,10 +258,7 @@ export default function AdminNewsPage() {
     }
   };
 
-  const handleTogglePin = async (
-    id: string,
-    currentPinned: boolean
-  ) => {
+  const handleTogglePin = async (id: string, currentPinned: boolean) => {
     try {
       const res = await fetch(`/api/admin/news/${id}`, {
         method: "PATCH",
@@ -278,9 +271,7 @@ export default function AdminNewsPage() {
       if (!res.ok) throw new Error();
 
       toast.success(
-        currentPinned
-          ? "Article unpinned"
-          : "Article pinned to top"
+        currentPinned ? "Article unpinned" : "Article pinned to top"
       );
 
       fetchNews();
@@ -334,7 +325,7 @@ export default function AdminNewsPage() {
               value={status}
               onValueChange={(value) => {
                 setPage(1);
-                setStatus(value);
+                setStatus(value || "ALL"); // 🔥 FIXED
               }}
             >
               <SelectTrigger>
@@ -354,7 +345,7 @@ export default function AdminNewsPage() {
               value={category}
               onValueChange={(value) => {
                 setPage(1);
-                setCategory(value);
+                setCategory(value || "ALL"); // 🔥 FIXED
               }}
             >
               <SelectTrigger>
@@ -375,18 +366,17 @@ export default function AdminNewsPage() {
             </Select>
 
             {/* Sort By */}
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select 
+              value={sortBy} 
+              onValueChange={(value) => setSortBy(value || "createdAt")} // 🔥 FIXED
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
 
               <SelectContent>
-                <SelectItem value="createdAt">
-                  Created Date
-                </SelectItem>
-                <SelectItem value="publishedAt">
-                  Published Date
-                </SelectItem>
+                <SelectItem value="createdAt">Created Date</SelectItem>
+                <SelectItem value="publishedAt">Published Date</SelectItem>
                 <SelectItem value="title">Title</SelectItem>
                 <SelectItem value="category">Category</SelectItem>
                 <SelectItem value="status">Status</SelectItem>
@@ -400,7 +390,7 @@ export default function AdminNewsPage() {
             <Select
               value={sortOrder}
               onValueChange={(value) =>
-                setSortOrder(value as "asc" | "desc")
+                setSortOrder((value as "asc" | "desc") || "desc") // 🔥 FIXED
               }
             >
               <SelectTrigger className="w-[160px]">
@@ -452,9 +442,7 @@ export default function AdminNewsPage() {
                     <TableHead>Tags</TableHead>
                     <TableHead>Author</TableHead>
                     <TableHead>Published</TableHead>
-                    <TableHead className="text-right">
-                      Actions
-                    </TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -527,17 +515,15 @@ export default function AdminNewsPage() {
                         <div className="flex flex-wrap gap-1 max-w-[150px]">
                           {article.tags.length > 0 ? (
                             <>
-                              {article.tags
-                                .slice(0, 2)
-                                .map((tag) => (
-                                  <Badge
-                                    key={tag}
-                                    variant="outline"
-                                    className="text-xs"
-                                  >
-                                    {tag}
-                                  </Badge>
-                                ))}
+                              {article.tags.slice(0, 2).map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
 
                               {article.tags.length > 2 && (
                                 <Badge
@@ -626,9 +612,7 @@ export default function AdminNewsPage() {
                           <Button
                             size="icon"
                             variant="destructive"
-                            onClick={() =>
-                              handleDelete(article.id)
-                            }
+                            onClick={() => handleDelete(article.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -651,7 +635,7 @@ export default function AdminNewsPage() {
                     value={String(pageSize)}
                     onValueChange={(value) => {
                       setPage(1);
-                      setPageSize(Number(value));
+                      setPageSize(Number(value || 10)); // 🔥 FIXED
                     }}
                   >
                     <SelectTrigger className="w-[120px]">
@@ -662,9 +646,7 @@ export default function AdminNewsPage() {
                       <SelectItem value="10">10 Rows</SelectItem>
                       <SelectItem value="25">25 Rows</SelectItem>
                       <SelectItem value="50">50 Rows</SelectItem>
-                      <SelectItem value="100">
-                        100 Rows
-                      </SelectItem>
+                      <SelectItem value="100">100 Rows</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -677,9 +659,7 @@ export default function AdminNewsPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
 
-                  <span className="text-sm font-medium">
-                    {page}
-                  </span>
+                  <span className="text-sm font-medium">{page}</span>
 
                   <Button
                     variant="outline"
