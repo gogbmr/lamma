@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 
 interface RouteContext {
   params: Promise<{
-    id: string;
+    courseId: string;
   }>;
 }
 
