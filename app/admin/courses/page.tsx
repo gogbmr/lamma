@@ -16,11 +16,10 @@ import {
 
 import { toast } from "sonner";
 
-import { Button , buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
 
 import {
   Card,
@@ -94,9 +93,7 @@ export default function AdminCoursesPage() {
 
   const [sortBy, setSortBy] = useState("createdAt");
 
-  const [sortOrder, setSortOrder] = useState<
-    "asc" | "desc"
-  >("desc");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const [totalPages, setTotalPages] = useState(1);
 
@@ -124,9 +121,7 @@ export default function AdminCoursesPage() {
         sortOrder,
       });
 
-      const res = await fetch(
-        `/api/admin/courses?${params.toString()}`
-      );
+      const res = await fetch(`/api/admin/courses?${params.toString()}`);
 
       if (!res.ok) {
         throw new Error();
@@ -135,9 +130,7 @@ export default function AdminCoursesPage() {
       const data: ApiResponse = await res.json();
 
       setCourses(data.data);
-
       setTotal(data.pagination.total);
-
       setTotalPages(data.pagination.totalPages);
     } catch {
       toast.error("Failed to load courses");
@@ -148,14 +141,7 @@ export default function AdminCoursesPage() {
 
   useEffect(() => {
     fetchCourses();
-  }, [
-    page,
-    pageSize,
-    search,
-    status,
-    sortBy,
-    sortOrder,
-  ]);
+  }, [page, pageSize, search, status, sortBy, sortOrder]);
 
   const handleDelete = async (id: string) => {
     const confirmed = window.confirm(
@@ -165,12 +151,9 @@ export default function AdminCoursesPage() {
     if (!confirmed) return;
 
     try {
-      const res = await fetch(
-        `/api/admin/courses/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const res = await fetch(`/api/admin/courses/${id}`, {
+        method: "DELETE",
+      });
 
       if (!res.ok) {
         throw new Error();
@@ -184,9 +167,7 @@ export default function AdminCoursesPage() {
     }
   };
 
-  const getStatusBadge = (
-    status: CourseRow["status"]
-  ) => {
+  const getStatusBadge = (status: CourseRow["status"]) => {
     switch (status) {
       case "APPROVED":
         return (
@@ -210,11 +191,7 @@ export default function AdminCoursesPage() {
         );
 
       case "ARCHIVED":
-        return (
-          <Badge variant="secondary">
-            ARCHIVED
-          </Badge>
-        );
+        return <Badge variant="secondary">ARCHIVED</Badge>;
 
       default:
         return (
@@ -231,36 +208,31 @@ export default function AdminCoursesPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">
-            Courses
-          </h1>
+          <h1 className="text-3xl font-bold">Courses</h1>
 
           <p className="text-muted-foreground">
-            Manage all courses in your learning
-            platform.
+            Manage all courses in your learning platform.
           </p>
         </div>
 
         <Link
-  href="/admin/courses/create"
-  className={cn(
-    buttonVariants({
-      variant: "default",
-    })
-  )}
->
-  <Plus className="h-4 w-4 mr-2" />
-  Create Course
-</Link>
+          href="/admin/courses/create"
+          className={cn(
+            buttonVariants({
+              variant: "default",
+            })
+          )}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Create Course
+        </Link>
       </div>
 
       {/* FILTERS */}
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Filters & Sorting
-          </CardTitle>
+          <CardTitle>Filters & Sorting</CardTitle>
         </CardHeader>
 
         <CardContent>
@@ -268,16 +240,15 @@ export default function AdminCoursesPage() {
             <Input
               placeholder="Search courses..."
               value={searchInput}
-              onChange={(e) =>
-                setSearchInput(e.target.value)
-              }
+              onChange={(e) => setSearchInput(e.target.value)}
             />
 
             <Select
               value={status}
               onValueChange={(value) => {
                 setPage(1);
-                setStatus(value);
+                // 🔥 FIX: Added fallback to "ALL" to prevent string | null error
+                setStatus(value || "ALL");
               }}
             >
               <SelectTrigger>
@@ -285,69 +256,36 @@ export default function AdminCoursesPage() {
               </SelectTrigger>
 
               <SelectContent>
-                <SelectItem value="ALL">
-                  All Statuses
-                </SelectItem>
-
-                <SelectItem value="DRAFT">
-                  Draft
-                </SelectItem>
-
-                <SelectItem value="PENDING_REVIEW">
-                  Pending Review
-                </SelectItem>
-
-                <SelectItem value="APPROVED">
-                  Approved
-                </SelectItem>
-
-                <SelectItem value="REJECTED">
-                  Rejected
-                </SelectItem>
-
-                <SelectItem value="ARCHIVED">
-                  Archived
-                </SelectItem>
+                <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
+                <SelectItem value="APPROVED">Approved</SelectItem>
+                <SelectItem value="REJECTED">Rejected</SelectItem>
+                <SelectItem value="ARCHIVED">Archived</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select
-              value={sortBy}
-              onValueChange={setSortBy}
+            <Select 
+              value={sortBy} 
+              onValueChange={(value) => setSortBy(value || "createdAt")} // 🔥 FIX added here too just in case
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
 
               <SelectContent>
-                <SelectItem value="createdAt">
-                  Created Date
-                </SelectItem>
-
-                <SelectItem value="title">
-                  Title
-                </SelectItem>
-
-                <SelectItem value="order">
-                  Display Order
-                </SelectItem>
-
-                <SelectItem value="xpReward">
-                  XP Reward
-                </SelectItem>
-
-                <SelectItem value="status">
-                  Status
-                </SelectItem>
+                <SelectItem value="createdAt">Created Date</SelectItem>
+                <SelectItem value="title">Title</SelectItem>
+                <SelectItem value="order">Display Order</SelectItem>
+                <SelectItem value="xpReward">XP Reward</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
               </SelectContent>
             </Select>
 
             <Select
               value={sortOrder}
               onValueChange={(value) =>
-                setSortOrder(
-                  value as "asc" | "desc"
-                )
+                setSortOrder((value as "asc" | "desc") || "desc") // 🔥 FIX added here too
               }
             >
               <SelectTrigger>
@@ -355,13 +293,8 @@ export default function AdminCoursesPage() {
               </SelectTrigger>
 
               <SelectContent>
-                <SelectItem value="desc">
-                  Descending
-                </SelectItem>
-
-                <SelectItem value="asc">
-                  Ascending
-                </SelectItem>
+                <SelectItem value="desc">Descending</SelectItem>
+                <SelectItem value="asc">Ascending</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -372,13 +305,9 @@ export default function AdminCoursesPage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>
-            Course Directory
-          </CardTitle>
+          <CardTitle>Course Directory</CardTitle>
 
-          <Badge variant="outline">
-            {total} Total Courses
-          </Badge>
+          <Badge variant="outline">{total} Total Courses</Badge>
         </CardHeader>
 
         <CardContent>
@@ -390,13 +319,10 @@ export default function AdminCoursesPage() {
             <div className="h-60 flex flex-col items-center justify-center text-center">
               <BookOpen className="h-10 w-10 text-muted-foreground mb-3" />
 
-              <h3 className="font-semibold">
-                No Courses Found
-              </h3>
+              <h3 className="font-semibold">No Courses Found</h3>
 
               <p className="text-sm text-muted-foreground">
-                Try changing filters or create
-                a new course.
+                Try changing filters or create a new course.
               </p>
             </div>
           ) : (
@@ -404,33 +330,19 @@ export default function AdminCoursesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>
-                      Image
-                    </TableHead>
+                    <TableHead>Image</TableHead>
 
-                    <TableHead>
-                      Course
-                    </TableHead>
+                    <TableHead>Course</TableHead>
 
-                    <TableHead>
-                      Lessons
-                    </TableHead>
+                    <TableHead>Lessons</TableHead>
 
-                    <TableHead>
-                      XP Reward
-                    </TableHead>
+                    <TableHead>XP Reward</TableHead>
 
-                    <TableHead>
-                      Status
-                    </TableHead>
+                    <TableHead>Status</TableHead>
 
-                    <TableHead>
-                      Created
-                    </TableHead>
+                    <TableHead>Created</TableHead>
 
-                    <TableHead className="text-right">
-                      Actions
-                    </TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -453,29 +365,21 @@ export default function AdminCoursesPage() {
 
                       <TableCell>
                         <div className="space-y-1">
-                          <div className="font-medium">
-                            {course.title}
-                          </div>
+                          <div className="font-medium">{course.title}</div>
 
                           <div className="text-xs text-muted-foreground">
                             Order #{course.order}
                           </div>
 
                           <p className="text-sm text-muted-foreground line-clamp-2 max-w-md">
-                            {
-                              course.description
-                            }
+                            {course.description}
                           </p>
                         </div>
                       </TableCell>
 
                       <TableCell>
                         <Badge variant="outline">
-                          {
-                            course._count
-                              ?.lessons
-                          }{" "}
-                          Lessons
+                          {course._count?.lessons} Lessons
                         </Badge>
                       </TableCell>
 
@@ -486,40 +390,30 @@ export default function AdminCoursesPage() {
                         </span>
                       </TableCell>
 
-                      <TableCell>
-                        {getStatusBadge(
-                          course.status
-                        )}
-                      </TableCell>
+                      <TableCell>{getStatusBadge(course.status)}</TableCell>
 
                       <TableCell>
-                        {new Date(
-                          course.createdAt
-                        ).toLocaleDateString()}
+                        {new Date(course.createdAt).toLocaleDateString()}
                       </TableCell>
 
                       <TableCell>
                         <div className="flex justify-end gap-2">
                           <Link
-  href={`/admin/courses/${course.id}/edit`}
-  className={cn(
-    buttonVariants({
-      variant: "outline",
-      size: "icon",
-    })
-  )}
->
-  <Pencil className="h-4 w-4" />
-</Link>
+                            href={`/admin/courses/${course.id}/edit`}
+                            className={cn(
+                              buttonVariants({
+                                variant: "outline",
+                                size: "icon",
+                              })
+                            )}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Link>
 
                           <Button
                             size="icon"
                             variant="destructive"
-                            onClick={() =>
-                              handleDelete(
-                                course.id
-                              )
-                            }
+                            onClick={() => handleDelete(course.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -534,8 +428,7 @@ export default function AdminCoursesPage() {
 
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6">
                 <div className="text-sm text-muted-foreground">
-                  Showing page {page} of{" "}
-                  {totalPages}
+                  Showing page {page} of {totalPages}
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -543,9 +436,8 @@ export default function AdminCoursesPage() {
                     value={String(pageSize)}
                     onValueChange={(value) => {
                       setPage(1);
-                      setPageSize(
-                        Number(value)
-                      );
+                      // 🔥 FIX: Added fallback to 10 here as well
+                      setPageSize(Number(value || 10));
                     }}
                   >
                     <SelectTrigger className="w-[120px]">
@@ -553,21 +445,13 @@ export default function AdminCoursesPage() {
                     </SelectTrigger>
 
                     <SelectContent>
-                      <SelectItem value="10">
-                        10 Rows
-                      </SelectItem>
+                      <SelectItem value="10">10 Rows</SelectItem>
 
-                      <SelectItem value="25">
-                        25 Rows
-                      </SelectItem>
+                      <SelectItem value="25">25 Rows</SelectItem>
 
-                      <SelectItem value="50">
-                        50 Rows
-                      </SelectItem>
+                      <SelectItem value="50">50 Rows</SelectItem>
 
-                      <SelectItem value="100">
-                        100 Rows
-                      </SelectItem>
+                      <SelectItem value="100">100 Rows</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -575,30 +459,18 @@ export default function AdminCoursesPage() {
                     variant="outline"
                     size="icon"
                     disabled={page === 1}
-                    onClick={() =>
-                      setPage(
-                        (prev) => prev - 1
-                      )
-                    }
+                    onClick={() => setPage((prev) => prev - 1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
 
-                  <span className="text-sm font-medium">
-                    {page}
-                  </span>
+                  <span className="text-sm font-medium">{page}</span>
 
                   <Button
                     variant="outline"
                     size="icon"
-                    disabled={
-                      page === totalPages
-                    }
-                    onClick={() =>
-                      setPage(
-                        (prev) => prev + 1
-                      )
-                    }
+                    disabled={page === totalPages}
+                    onClick={() => setPage((prev) => prev + 1)}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
