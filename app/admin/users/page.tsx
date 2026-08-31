@@ -234,7 +234,7 @@ export default function AdminUsersPage() {
               value={role}
               onValueChange={(value) => {
                 setPage(1);
-                setRole(value);
+                setRole(value || "ALL"); // 🔥 FIXED
               }}
             >
               <SelectTrigger>
@@ -249,7 +249,10 @@ export default function AdminUsersPage() {
             </Select>
 
             {/* Sort By */}
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select 
+              value={sortBy} 
+              onValueChange={(value) => setSortBy(value || "createdAt")} // 🔥 FIXED
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -267,7 +270,7 @@ export default function AdminUsersPage() {
             <Select
               value={sortOrder}
               onValueChange={(value) =>
-                setSortOrder(value as "asc" | "desc")
+                setSortOrder((value as "asc" | "desc") || "desc") // 🔥 FIXED
               }
             >
               <SelectTrigger className="w-[160px]">
@@ -454,7 +457,7 @@ export default function AdminUsersPage() {
                     value={String(pageSize)}
                     onValueChange={(value) => {
                       setPage(1);
-                      setPageSize(Number(value));
+                      setPageSize(Number(value || 10)); // 🔥 FIXED
                     }}
                   >
                     <SelectTrigger className="w-[120px]">
