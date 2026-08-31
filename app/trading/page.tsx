@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/navigation/navbar";
 import { useThemeStore } from "@/store/useThemeStore";
 import { toast } from "sonner";
-import { createChart, ColorType, CandlestickSeries, LineSeries } from "lightweight-charts";
+import { createChart, ColorType, CandlestickSeries, LineSeries, Time } from "lightweight-charts"; // 🔥 IMPORTED Time
 import { 
   Wallet, 
   Search, 
@@ -68,7 +68,7 @@ function calculateSMA(candleData: any[], period: number) {
       sum += candleData[i - j].close;
     }
     smaData.push({
-      time: candleData[i].time,
+      time: candleData[i].time as Time, // 🔥 FIX: Cast to Time
       value: parseFloat((sum / period).toFixed(2)),
     });
   }
@@ -111,7 +111,7 @@ function FinancialMarketChart({ symbol, basePrice, timeframe, showSMA }: ChartEn
       const low = Math.min(open, close) - Math.random() * (base * volatility * 0.5);
       
       points.push({
-        time: currentTimestamp,
+        time: currentTimestamp as Time, // 🔥 FIX: Cast to Time
         open: parseFloat(open.toFixed(2)),
         high: parseFloat(high.toFixed(2)),
         low: parseFloat(low.toFixed(2)),
