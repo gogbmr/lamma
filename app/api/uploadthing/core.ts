@@ -26,6 +26,14 @@ export const ourFileRouter = {
     console.log("[UploadThing] Video context JSON uploaded:", file.ufsUrl);
     return { url: file.ufsUrl };
   }),
+
+  // 🔥 ADDED: Tutor Avatar upload
+  tutorAvatar: f({
+    image: { maxFileSize: "4MB", maxFileCount: 1 },
+  }).onUploadComplete(async ({ file }) => {
+    console.log("[UploadThing] Tutor avatar uploaded:", file.ufsUrl);
+    return { url: file.ufsUrl };
+  }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;
