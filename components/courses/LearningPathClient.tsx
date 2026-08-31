@@ -212,7 +212,7 @@ interface LessonNodeProps {
   isLocked: boolean;
   isActive: boolean;
   courseId: string;
-  nodeRef?: React.RefObject<HTMLDivElement>;
+  nodeRef?: React.RefObject<HTMLDivElement | null>; // 🔥 FIX: Added '| null' here
 }
 
 function LessonNode({
