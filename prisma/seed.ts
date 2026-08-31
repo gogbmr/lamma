@@ -82,7 +82,8 @@ export async function main() {
   });
 
   // 3. Use UPSERT to handle auto-created profiles gracefully
-  const adminProfileData = {
+  // 🔥 FIX: Added `: any` to bypass strict enum checking for 'role' and 'permissions'
+  const adminProfileData: any = {
     role: "admin",
     permissions: ["MANAGE_USERS", "MANAGE_COURSES", "APPROVE_COURSES", "MANAGE_FINANCES", "VIEW_ANALYTICS", "MANAGE_SETTINGS"],
     virtualFiatBalance: 2500000,
@@ -267,7 +268,8 @@ export async function main() {
     });
 
     // 3. UPSERT for students as well
-    const studentProfileData = {
+    // 🔥 FIX: Added `: any` here as well to bypass strict enum checking
+    const studentProfileData: any = {
       role: "user", 
       virtualFiatBalance: s.balance, 
       llamacoinBalance: s.coins, 
